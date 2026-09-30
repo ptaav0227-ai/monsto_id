@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>モンストID検索</title>
+<style>
+  :root{
+    --bg:#101215; --panel:#1a1d22; --panel2:#20242a; --line:#2b2f36;
+    --text:#f0f1f3; --muted:#8a8f98; --accent:#ff7d1f;
+    --ok:#4fd587; --warn:#e0a83f; --bad:#e2574c;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f4f5f7; --panel:#ffffff; --panel2:#f0f1f3; --line:#e3e5e9;
+      --text:#1c1e22; --muted:#6b7078; --accent:#ff7d1f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101215; --panel:#1a1d22; --panel2:#20242a; --line:#2b2f36;
+    --text:#f0f1f3; --muted:#8a8f98; --accent:#ff7d1f;
+  }
+  html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+  *{box-sizing:border-box;}
+  body{
+    margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding:32px 18px 60px;
+  }
+  .wrap{width:100%; max-width:460px;}
+  h1{
+    font-size:1.05rem; font-weight:700; letter-spacing:.02em;
+    margin:0 0 4px; color:var(--text);
+  }
+  .sub{color:var(--muted); font-size:0.82rem; margin-bottom:28px;}
+  .search-box{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:6px; display:flex; align-items:center; gap:8px;
+    box-shadow:0 1px 3px rgba(0,0,0,.25);
+  }
+  .search-box svg{flex-shrink:0; color:var(--muted); margin-left:10px;}
+  #idInput{
+    flex:1; border:none; background:transparent; color:var(--text);
+    font-family:'JetBrains Mono',monospace; font-size:1.1rem;
+    padding:14px 6px; outline:none; letter-spacing:.02em;
+    min-width:0;
+  }
+  #idInput::placeholder{color:var(--muted); font-family:inherit;}
+  .clear-btn{
+    background:var(--panel2); border:none; color:var(--muted);
+    width:32px; height:32px; border-radius:50%; font-size:1rem;
+    cursor:pointer; flex-shrink:0; margin-right:6px; display:none;
+  }
+  .clear-btn.show{display:block;}
+
+  .result{margin-top:22px; min-height:1px;}
+  .placeholder{
+    color:var(--muted); font-size:0.85rem; text-align:center;
+    padding:40px 20px; line-height:1.8;
+  }
+  .placeholder .big{font-size:2.2rem; display:block; margin-bottom:10px;}
+
+  .result-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:22px 20px; animation:pop .18s ease-out;
+  }
+  @keyframes pop{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+  .status-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:11px; font-weight:700; padding:4px 11px; border-radius:999px;
+    margin-bottom:14px;
+  }
+  .status-pill::before{content:"";width:6px;height:6px;border-radius:50%;}
+  .status-active{background:rgba(79,213,135,.14); color:var(--ok);}
+  .status-active::before{background:var(--ok);}
+  .status-closed{background:rgba(224,168,63,.14); color:var(--warn);}
+  .status-closed::before{background:var(--warn);}
+  .status-withdrawn{background:rgba(226,87,76,.14); color:var(--bad);}
+  .status-withdrawn::before{background:var(--bad);}
+
+  .line-name{font-size:0.78rem; color:var(--muted); margin-bottom:2px;}
+  .acct-name{font-size:1.3rem; font-weight:700; color:var(--text); margin-bottom:16px; word-break:break-word;}
+  .detail-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 0; border-top:1px solid var(--line);
+    font-size:0.9rem;
+  }
+  .detail-row:first-of-type{border-top:none;}
+  .detail-label{color:var(--muted);}
+  .detail-value{font-family:'JetBrains Mono',monospace; color:var(--text);}
+
+  .not-found{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:32px 20px; text-align:center; color:var(--muted); font-size:0.9rem;
+  }
+  .not-found .big{font-size:2rem; display:block; margin-bottom:10px;}
+
+  .tabs{
+    display:flex; gap:6px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:14px; padding:4px; margin-bottom:16px;
+  }
+  .tab-btn{
+    flex:1; border:none; background:transparent; color:var(--muted);
+    font-family:inherit; font-size:0.85rem; font-weight:700;
+    padding:10px 0; border-radius:10px; cursor:pointer;
+  }
+  .tab-btn.active{background:var(--panel); color:var(--accent); box-shadow:0 1px 2px rgba(0,0,0,.2);}
+
+  .rank-hint{color:var(--muted); font-size:0.78rem; margin:10px 2px 0;}
+
+  .rank-list{display:flex; flex-direction:column; gap:10px;}
+  .rank-item{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px; display:flex; align-items:center; gap:12px;
+  }
+  .rank-item .r-badge{
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1rem;
+    color:var(--accent); background:rgba(255,125,31,.12);
+    border-radius:10px; padding:6px 10px; flex-shrink:0; min-width:56px; text-align:center;
+  }
+  .rank-item .r-body{flex:1; min-width:0;}
+  .rank-item .r-line{font-size:0.72rem; color:var(--muted); margin-bottom:1px;}
+  .rank-item .r-acct{font-size:0.95rem; color:var(--text); font-weight:600; word-break:break-word;}
+  .rank-item .r-status{font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; flex-shrink:0;}
+
+  .rank-count{color:var(--muted); font-size:0.8rem; margin-bottom:10px;}
+
+  footer{margin-top:40px; color:var(--muted); font-size:0.72rem; text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1 id="pageTitle">モンストID検索</h1>
+  <div class="sub" id="pageSub">絆グループのIDを入力すると、誰の垢か調べられます</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabId">IDで検索</button>
+    <button class="tab-btn" id="tabRank">ランクで検索</button>
+  </div>
+
+  <div class="search-box" id="idSearchBox">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="idInput" type="text" inputmode="numeric" placeholder="モンストIDを入力" autocomplete="off">
+    <button class="clear-btn" id="clearBtn" aria-label="クリア">✕</button>
+  </div>
+
+  <div class="search-box" id="rankSearchBox" style="display:none;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="rankInput" type="text" inputmode="numeric" placeholder="ランクを入力(例:1500)" autocomplete="off">
+    <button class="clear-btn" id="rankClearBtn" aria-label="クリア">✕</button>
+  </div>
+  <div class="rank-hint" id="rankHint" style="display:none;"></div>
+
+  <div class="result" id="result">
+    <div class="placeholder">
+      <span class="big">🔍</span>
+      IDを入力すると<br>結果がここに表示されます
+    </div>
+  </div>
+
+  <footer>絆グループ名簿と連動(手動更新)<br>更新日:2026-10-01</footer>
+</div>
+
+<script>
+const MEMBERS = [{"lineName":"くどまさ","note":"神殿:なんでもOK\nランク差:175以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ\n【追記】光神殿でルシファーワンパンが好きですが、闇時でも大丈夫です\n3垢なので、1垢の方は3垢\n2神殿（サヴサヴは溜まりきらなくても）2垢の方は2垢ずつで2神殿だと助かります","accounts":[{"accountName":"くどぽん(*´*)","rank":"2099","gameId":"787329974","rankStatus":"updated"},{"accountName":"くどぱん(*´ω`*)","rank":"2099","gameId":"902520144026","rankStatus":"updated"},{"accountName":"サヴ(;´Д`)","rank":"717","gameId":"333561807","rankStatus":"updated"}]},{"lineName":"藤岡","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】1垢勢は上3垢まで出します。\n2垢勢以上は4垢出します。\n5垢以上は5垢出します。","accounts":[{"accountName":"私はルリ","rank":"2500","gameId":"131291013582","rankStatus":"updated"},{"accountName":"私はルリ②","rank":"2007","gameId":"168606364132","rankStatus":"updated"},{"accountName":"私はルリ③","rank":"1504","gameId":"601468556","rankStatus":"updated"},{"accountName":"私はルリ4号線","rank":"940","gameId":"716483347041","rankStatus":"updated"},{"accountName":"瑠璃⑤","rank":"564","gameId":"734717689844","rankStatus":"updated"}]},{"lineName":"すぅちゃん","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】基本火の1貼るのでよろしくお願いします！","accounts":[{"accountName":"ススム①","rank":"2500","gameId":"515783919","rankStatus":"updated"},{"accountName":"ススム②","rank":"1049","gameId":"833959189716","rankStatus":"updated"},{"accountName":"ススム④","rank":"512","gameId":"931146110012","closed":true,"rankStatus":"updated"},{"accountName":"ススム","rank":"731","gameId":"789032942560","closed":true,"rankStatus":"updated"}]},{"lineName":"かれん","accounts":[{"accountName":"ビックマムの妹かれん","rank":"1500","gameId":"754405776830","rankStatus":"updated"}]},{"lineName":"田中","accounts":[{"accountName":"1","rank":"2281","gameId":"866595039852","closed":true,"rankStatus":"updated"},{"accountName":"2","rank":"1243","gameId":"167989412548","closed":true,"rankStatus":"updated"},{"accountName":"4","rank":"1056","gameId":"862736414101","rankStatus":"updated"},{"accountName":"3","rank":"1064","gameId":"896785504970","rankStatus":"updated"}]},{"lineName":"莉奈","note":"神殿:なんでもOK\nランク差:100以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】メインと325差、サブ2日(4回)に分けて貯まる垢ならOKです!","accounts":[{"accountName":"ぱぴもっちo'ㅅ'o","rank":"1419","gameId":"400361501664","rankStatus":"updated"},{"accountName":"サブもっち①o'ㅅ'o","rank":"802","gameId":"221837494456","rankStatus":"updated"}]},{"lineName":"SUGURU(番号なし)","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ\n【追記】自分は番号無しです。","accounts":[{"accountName":"SUGURU①","rank":"2006","gameId":"845504854","rankStatus":"updated"},{"accountName":"SUGURU②","rank":"139","gameId":"163414791951","rankStatus":"updated"}]},{"lineName":"YUUKI","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:777のみ\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】1垢以上325差あれば他の垢は複数の日にわけて貯める等でも大丈夫です\nこちら闇時2用喜多ちゃんのみ出せます\n基本的に21~24時ごろに貯められる方いましたらお願いいたします","accounts":[{"accountName":"Y・I","rank":"692","gameId":"722096972443","rankStatus":"updated"}]},{"lineName":"あきひろ","accounts":[{"accountName":"2×4","rank":"571","gameId":"167017160","rankStatus":"updated"}]},{"lineName":"コウヘイ","accounts":[{"accountName":"Kohei。","rank":"2087","gameId":"416959932074","rankStatus":"updated"}]},{"lineName":"なめ猫","accounts":[{"accountName":"なめ猫","rank":"1131","gameId":"087598666","rankStatus":"updated"},{"accountName":"なめ猫①","rank":"537","gameId":"087013943","rankStatus":"updated"},{"accountName":"なめ猫＊まりこ","rank":"474","gameId":"856640562515","rankStatus":"updated"}]},{"lineName":"ゆりな","note":"神殿:なんでもOK\nランク差:175以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:NG\nワンパンキャラのみ","accounts":[{"accountName":"トンちゃん@ゆりなガチャ禁","rank":"597","gameId":"87457461458","rankStatus":"updated"},{"accountName":"トンちゃん@ゆりな","rank":"710","gameId":"256947852","rankStatus":"updated"},{"accountName":"伽羅栖ʚ✞ɞヤマピー","rank":"2043","gameId":"910812272","rankStatus":"updated"},{"accountName":"伽羅栖@ヤマピー3","rank":"816","gameId":"660320951451","rankStatus":"updated"}]},{"lineName":"⋈フレドラ・クリア♡","note":"神殿:闇時2のみ\nランク差:気にしない\n垢:1垢でもOK\n番号:777のみ\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】ワンパンキャラ出します","accounts":[{"accountName":"NT・R18 メス〇キ","rank":"885","gameId":"503625563265","rankStatus":"updated"},{"accountName":"T・SF メス〇キママ","rank":"569","gameId":"599171176743","rankStatus":"updated"}]},{"lineName":"ばっち","accounts":[{"accountName":"グラ","rank":"1911","gameId":"636501537","rankStatus":"updated"}]},{"lineName":"かなっぺ","accounts":[{"accountName":"かな@べる神獣","rank":"628","gameId":"543134141774","rankStatus":"updated"}]},{"lineName":"柳本 こうや","note":"神殿:なんでもOK\nランク差:100以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】・ワンパン枠は闇時2で喜多ちゃん出せます\n・仕事の関係で平日は朝の10時頃か深夜1時頃に募集をすることが多いですが土日は基本いつでもできます。","accounts":[{"accountName":"やなサブ1","rank":"706","gameId":"5968118760","rankStatus":"updated"},{"accountName":"やなサブ2","rank":"88","gameId":"487739571303","rankStatus":"updated"},{"accountName":"やな","rank":"888","gameId":"963721647794","rankStatus":"updated"}]},{"lineName":"かずくん","accounts":[{"accountName":"かずくん[絆感謝]","rank":"1363","gameId":"605007106500","rankStatus":"updated"}]},{"lineName":"の","note":"神殿:闇時2のみ\nランク差:325以上\n垢:1垢でもOK\n番号:777のみ\n厳選キャラ:NG\nワンパンキャラなくても大丈夫\n【追記】週4~5回貯めれる方\n時間帯午前から14時、その他不定期\n貯めきり条件合わない方フレンドお断りしてます。ランク1200以上の方のみお願いします","accounts":[{"accountName":"のサブ","rank":"659","gameId":"800663240812","rankStatus":"updated"},{"accountName":"の","rank":"659","gameId":"797220657225","rankStatus":"updated"}]},{"lineName":"よしとみ","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫","accounts":[{"accountName":"久住⁰","rank":"2500","gameId":"551993492721","rankStatus":"updated"},{"accountName":"久住¹","rank":"784","gameId":"331090264115","rankStatus":"updated"}]},{"lineName":"ai(番号なし)","note":"神殿:闇時2のみ\nランク差:175以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫","accounts":[{"accountName":"*.ゆきんこ.*","rank":"1557","gameId":"726912187193","rankStatus":"updated"},{"accountName":"みみっち@ゆこ2","rank":"840","gameId":"168498797684","rankStatus":"updated"},{"accountName":"まるっち@ゆこ3","rank":"840","gameId":"535920945416","rankStatus":"updated"}]},{"lineName":"おき","accounts":[{"accountName":"しん","rank":"2500","gameId":"956426833888","rankStatus":"updated"},{"accountName":"しん","rank":"556","gameId":"698292106584","rankStatus":"updated"},{"accountName":"しんさぶ","rank":"530","gameId":"580787362213","rankStatus":"updated"}]},{"lineName":"暖","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】ランク325離れてる方お願い致します。","accounts":[{"accountName":"べてぃ♣'3☆〜","rank":"2500","gameId":"353327454589","rankStatus":"updated"},{"accountName":"べてぃ♣''''3☆〜","rank":"535","gameId":"568875722954","rankStatus":"updated"},{"accountName":"べてぃ♣'''3☆〜","rank":"729","gameId":"370768412026","closed":true,"rankStatus":"updated"},{"accountName":"べてぃ♣\"3☆〜","rank":"882","gameId":"149245135055","rankStatus":"updated"}]},{"lineName":"唯人","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫","accounts":[{"accountName":"ゆいぽん","rank":"2035","gameId":"487155252","rankStatus":"updated"}]},{"lineName":"はやと(hyt)","accounts":[{"accountName":"1st hyt","rank":"1433","gameId":"229543871633","rankStatus":"updated"},{"accountName":"2nd hyt","rank":"566","gameId":"837202595851","rankStatus":"updated"},{"accountName":"3rd hyt","rank":"415","gameId":"865349198241","rankStatus":"updated"},{"accountName":"4th hyt","rank":"495","gameId":"87688703704","rankStatus":"updated"}]},{"lineName":"焔","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫","accounts":[{"accountName":"焔","rank":"2006","gameId":"248619456569","rankStatus":"updated"},{"accountName":"焔　sub1","rank":"1690","gameId":"907356852441","rankStatus":"updated"},{"accountName":"焔サブ2","rank":"355","gameId":"407511331433","rankStatus":"updated"},{"accountName":"焔サブ3","rank":"322","gameId":"567560201070","rankStatus":"updated"}]},{"lineName":"ようへい","note":"神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫","accounts":[{"accountName":"YOUHEI","rank":"1660","gameId":"940200717","rankStatus":"updated"}]},{"lineName":"こうすけ","note":"神殿:なんでもOK\nランク差:気にしない\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫","accounts":[{"accountName":"まえすけ③ @星詠み☆","rank":"2000","gameId":"977778319861","rankStatus":"updated"}]},{"lineName":"まこと","accounts":[{"accountName":"特攻隊長黒","rank":"1402","gameId":"722976073114","rankStatus":"updated"}]},{"lineName":"さやか","note":"神殿:なんでもOK\nランク差:325以上\n垢:複数垢のみ\n番号:777のみ\n厳選キャラ:OK\nワンパンキャラのみ","accounts":[{"accountName":"コマみちゃん","rank":"1905","gameId":"412896132","rankStatus":"updated"},{"accountName":"コマさん","rank":"2325","gameId":"603643580332","rankStatus":"updated"}]},{"lineName":"kasumiෆ.*･ﾟ","note":"神殿:闇時2のみ\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫","accounts":[{"accountName":"♡얏쿤♡","rank":"1035","gameId":"510266401239","rankStatus":"updated"}]},{"lineName":"鳥谷 育史","accounts":[{"accountName":"ぺろりんチーノ♡","rank":"1580","gameId":"549431907","rankStatus":"updated"}]},{"lineName":"こ","note":"神殿:なんでもOK\nランク差:175以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】ランク差が近くて溜まりにくい方もチリツモで大丈夫な方は是非自分の3垢として欲しいです！","accounts":[{"accountName":"すかぽん👑3松","rank":"1530","gameId":"327771767","rankStatus":"updated"},{"accountName":"すかぽん👑3梅","rank":"700","gameId":"469314978013","rankStatus":"updated"},{"accountName":"すかぽん👑3竹","rank":"1089","gameId":"842722128614","rankStatus":"updated"}]},{"lineName":"崇嗣","note":"神殿:闇時2のみ\nランク差:325以上\n垢:1垢でもOK\n番号:777のみ\n厳選キャラ:OK\nワンパンキャラなくても大丈夫","accounts":[{"accountName":"✿壱✿","rank":"1515","gameId":"542795033634","rankStatus":"updated"},{"accountName":"✿弐✿","rank":"1001","gameId":"360219599405","rankStatus":"updated"},{"accountName":"✿参✿","rank":"1001","gameId":"742247529075","rankStatus":"updated"},{"accountName":"✿肆✿","rank":"1000","gameId":"812727077942","rankStatus":"updated"}]},{"lineName":"たに","note":"神殿:なんでもOK\nランク差:100以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ\n【追記】ワンパンできれば誰とでもやりたいです。\n自分はニケとティーチを所持しています。","accounts":[{"accountName":"みやむら☆真面目です","rank":"970","gameId":"788461597168","rankStatus":"updated"},{"accountName":"おとさか","rank":"593","gameId":"118748871282","rankStatus":"updated"}]}];
+const WITHDRAWN = [{"lineName":"こうき","accounts":[{"accountName":"あまのる","rank":"1155","gameId":"191897846"}]},{"lineName":"祐人","accounts":[{"accountName":"MOL53","rank":"1108","gameId":"526765556182"},{"accountName":"MOL53②","rank":"398","gameId":"908489865835"},{"accountName":"MOL53③","rank":"64","gameId":"317907783837"}]},{"lineName":"きむゆう","accounts":[{"accountName":"CIMAきむゆう","rank":"518","gameId":"452415097235"}]},{"lineName":"渡辺","accounts":[{"accountName":"、","rank":"2500","gameId":"50541605312"}]},{"lineName":"NAMIKI","accounts":[{"accountName":"NAMU .:゜)","rank":"1900","gameId":"94789450454"}]},{"lineName":"しょうた（番号333）","accounts":[{"accountName":"M","rank":"788","gameId":"328791704492"},{"accountName":"M②","rank":"602","gameId":"260475006075"},{"accountName":"M③","rank":"94","gameId":"275948063233"}]},{"lineName":"あやか","accounts":[{"accountName":"✿あやさぶ✿","rank":"196","gameId":"552395839752"},{"accountName":"あやさぶ②ℳ゚","rank":"609","gameId":"622256118531"},{"accountName":"めあろの箱","rank":"834","gameId":"910787410820"}]}];
+
+const idInput = document.getElementById('idInput');
+const clearBtn = document.getElementById('clearBtn');
+const result = document.getElementById('result');
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderPlaceholder(){
+  result.innerHTML = '<div class="placeholder"><span class="big">🔍</span>IDを入力すると<br>結果がここに表示されます</div>';
+}
+
+function renderNotFound(){
+  result.innerHTML = '<div class="not-found"><span class="big">🤷</span>該当するIDが見つかりませんでした</div>';
+}
+
+function renderHit(lineName, account, status){
+  const pillClass = status === '退会済み' ? 'status-withdrawn' : (status === '募集停止中' ? 'status-closed' : 'status-active');
+  result.innerHTML = `
+    <div class="result-card">
+      <div class="status-pill ${pillClass}">${escapeHtml(status)}</div>
+      <div class="line-name">${escapeHtml(lineName)}</div>
+      <div class="acct-name">${escapeHtml(account.accountName)}</div>
+      <div class="detail-row"><span class="detail-label">ランク</span><span class="detail-value">${escapeHtml(account.rank)}</span></div>
+      <div class="detail-row"><span class="detail-label">モンストID</span><span class="detail-value">${escapeHtml(account.gameId)}</span></div>
+    </div>
+  `;
+}
+
+function search(raw){
+  if (!raw){ renderPlaceholder(); clearBtn.classList.remove('show'); return; }
+  clearBtn.classList.add('show');
+  for (const m of MEMBERS){
+    for (const a of m.accounts){
+      if (a.gameId === raw){ renderHit(m.lineName, a, a.closed ? '募集停止中' : '在籍中'); return; }
+    }
+  }
+  for (const m of WITHDRAWN){
+    for (const a of m.accounts){
+      if (a.gameId === raw){ renderHit(m.lineName, a, '退会済み'); return; }
+    }
+  }
+  renderNotFound();
+}
+
+idInput.addEventListener('input', () => {
+  const raw = idInput.value.replace(/[,\s、]/g, '').trim();
+  search(raw);
+});
+clearBtn.addEventListener('click', () => {
+  idInput.value = '';
+  renderPlaceholder();
+  clearBtn.classList.remove('show');
+  idInput.focus();
+});
+
+// ==== ランクで検索(入力ランク〜+100の範囲) ====
+const rankInput = document.getElementById('rankInput');
+const rankClearBtn = document.getElementById('rankClearBtn');
+const rankHint = document.getElementById('rankHint');
+const tabId = document.getElementById('tabId');
+const tabRank = document.getElementById('tabRank');
+const idSearchBox = document.getElementById('idSearchBox');
+const rankSearchBox = document.getElementById('rankSearchBox');
+const pageSub = document.getElementById('pageSub');
+
+function allAccountsFlat(){
+  const list = [];
+  MEMBERS.forEach(m => m.accounts.forEach(a => {
+    list.push({ lineName: m.lineName, account: a, status: a.closed ? '募集停止中' : '在籍中' });
+  }));
+  WITHDRAWN.forEach(m => m.accounts.forEach(a => {
+    list.push({ lineName: m.lineName, account: a, status: '退会済み' });
+  }));
+  return list;
+}
+
+function statusClass(status){
+  return status === '退会済み' ? 'status-withdrawn' : (status === '募集停止中' ? 'status-closed' : 'status-active');
+}
+
+function renderRankPlaceholder(){
+  result.innerHTML = '<div class="placeholder"><span class="big">📶</span>ランクを入力すると<br>その範囲の垢が一覧表示されます</div>';
+  rankHint.style.display = 'none';
+}
+
+function renderRankResults(lower, upper, hits){
+  rankHint.style.display = 'block';
+  rankHint.textContent = `ランク ${lower}〜${upper} の範囲`;
+  if (hits.length === 0){
+    result.innerHTML = '<div class="not-found"><span class="big">🤷</span>この範囲に該当する垢が見つかりませんでした</div>';
+    return;
+  }
+  hits.sort((a,b) => parseInt(b.account.rank,10) - parseInt(a.account.rank,10));
+  const rows = hits.map(h => `
+    <div class="rank-item">
+      <div class="r-badge">${escapeHtml(h.account.rank)}</div>
+      <div class="r-body">
+        <div class="r-line">${escapeHtml(h.lineName)}</div>
+        <div class="r-acct">${escapeHtml(h.account.accountName)}</div>
+      </div>
+      <div class="r-status ${statusClass(h.status)}">${escapeHtml(h.status)}</div>
+    </div>
+  `).join('');
+  result.innerHTML = `<div class="rank-count">${hits.length}件ヒット</div><div class="rank-list">${rows}</div>`;
+}
+
+function rankSearch(raw){
+  if (!raw){ renderRankPlaceholder(); rankClearBtn.classList.remove('show'); return; }
+  const n = parseInt(raw, 10);
+  if (isNaN(n)){ renderRankPlaceholder(); return; }
+  rankClearBtn.classList.add('show');
+  const lower = n, upper = n + 100;
+  const hits = allAccountsFlat().filter(h => {
+    const r = parseInt(h.account.rank, 10);
+    return !isNaN(r) && r >= lower && r <= upper;
+  });
+  renderRankResults(lower, upper, hits);
+}
+
+rankInput.addEventListener('input', () => {
+  const raw = rankInput.value.replace(/[,\s、]/g, '').trim();
+  rankSearch(raw);
+});
+rankClearBtn.addEventListener('click', () => {
+  rankInput.value = '';
+  renderRankPlaceholder();
+  rankClearBtn.classList.remove('show');
+  rankInput.focus();
+});
+
+function switchTab(mode){
+  if (mode === 'id'){
+    tabId.classList.add('active'); tabRank.classList.remove('active');
+    idSearchBox.style.display = 'flex'; rankSearchBox.style.display = 'none';
+    pageSub.textContent = '絆グループのIDを入力すると、誰の垢か調べられます';
+    search(idInput.value.replace(/[,\s、]/g, '').trim());
+  } else {
+    tabRank.classList.add('active'); tabId.classList.remove('active');
+    idSearchBox.style.display = 'none'; rankSearchBox.style.display = 'flex';
+    pageSub.textContent = 'ランクを入力すると、そこから+100までの垢を一覧表示します';
+    rankSearch(rankInput.value.replace(/[,\s、]/g, '').trim());
+  }
+}
+tabId.addEventListener('click', () => switchTab('id'));
+tabRank.addEventListener('click', () => switchTab('rank'));
+</script>
+
+</body>
+</html>
