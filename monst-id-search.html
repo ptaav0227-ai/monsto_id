@@ -125,6 +125,7 @@
   .rank-item .r-body{flex:1; min-width:0;}
   .rank-item .r-line{font-size:0.72rem; color:var(--muted); margin-bottom:1px;}
   .rank-item .r-acct{font-size:0.95rem; color:var(--text); font-weight:600; word-break:break-word;}
+  .rank-item .r-id{font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--muted); margin-top:2px;}
   .rank-item .r-status{font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; flex-shrink:0;}
 
   .rank-count{color:var(--muted); font-size:0.8rem; margin-bottom:10px;}
@@ -270,6 +271,7 @@ function renderRankResults(lower, upper, hits){
       <div class="r-body">
         <div class="r-line">${escapeHtml(h.lineName)}</div>
         <div class="r-acct">${escapeHtml(h.account.accountName)}</div>
+        <div class="r-id">ID:${escapeHtml(h.account.gameId)}</div>
       </div>
       <div class="r-status ${statusClass(h.status)}">${escapeHtml(h.status)}</div>
     </div>
