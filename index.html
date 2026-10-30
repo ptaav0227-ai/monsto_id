@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>絆グループ アカウント検索</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Zen+Maru+Gothic:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#090c11;
+    --bg-1:#0e131b;
+    --panel:#131a25;
+    --panel-2:#182131;
+    --line:#232e40;
+    --line-soft:#1a2333;
+    --orange:#ff7d1f;
+    --orange-2:#ff5a2e;
+    --orange-dark:#c9370f;
+    --gold:#ffd54a;
+    --blue:#3fa9ff;
+    --blue-dark:#155fa8;
+    --green:#6fd15c;
+    --text:#f3f6f9;
+    --muted:#8fa0b8;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse 700px 420px at 100% -6%, rgba(255,125,31,.14), transparent 55%),
+      radial-gradient(ellipse 620px 500px at -10% 30%, rgba(63,169,255,.08), transparent 55%),
+      var(--bg-0);
+    color:var(--text);
+    font-family:'Zen Maru Gothic', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 14px;}
+
+  /* ---- HUD top bar (Monster Strike-style) ---- */
+  .hud{
+    position:relative;overflow:hidden;
+    background:linear-gradient(120deg,var(--orange),var(--orange-2) 55%,var(--orange-dark));
+    padding:18px 18px 22px;
+    border-bottom:3px solid rgba(0,0,0,.25);
+    box-shadow:0 10px 24px -10px rgba(0,0,0,.6);
+  }
+  .hud::before{
+    content:"";position:absolute;inset:0;opacity:.14;pointer-events:none;
+    background-image:
+      linear-gradient(60deg, transparent 48%, rgba(255,255,255,.5) 49%, rgba(255,255,255,.5) 51%, transparent 52%),
+      linear-gradient(-60deg, transparent 48%, rgba(255,255,255,.5) 49%, rgba(255,255,255,.5) 51%, transparent 52%);
+    background-size:46px 80px;
+  }
+  .hud-row{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:1;}
+  .hud-badge{
+    display:flex;align-items:center;gap:8px;
+    background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.25);
+    border-radius:30px;padding:6px 12px 6px 8px;
+  }
+  .flame{
+    width:26px;height:26px;border-radius:50%;flex-shrink:0;
+    background:radial-gradient(circle at 35% 30%, #fff6d8, var(--gold) 30%, var(--orange-2) 65%, var(--orange-dark) 100%);
+    box-shadow:0 0 10px rgba(255,180,60,.7);
+  }
+  .hud-badge span{font-size:12px;font-weight:700;color:#fff;letter-spacing:.02em;}
+  .member-count{
+    display:flex;align-items:center;gap:6px;
+    background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.25);
+    border-radius:30px;padding:6px 12px;font-size:12px;font-weight:700;color:#fff;
+  }
+  .member-count .clover{width:14px;height:14px;}
+
+  h1{
+    position:relative;z-index:1;
+    font-family:'Shippori Mincho',serif;font-weight:800;
+    font-size:27px;margin:14px 0 3px;color:#fff;letter-spacing:.02em;
+    text-shadow:0 2px 0 rgba(0,0,0,.25), 0 0 18px rgba(255,220,150,.35);
+  }
+  .sub{position:relative;z-index:1;color:rgba(255,255,255,.85);font-size:12.5px;margin:0;line-height:1.5;}
+
+  /* ---- Search ---- */
+  .search-card{
+    position:relative;margin-top:-14px;z-index:2;
+    background:linear-gradient(165deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;box-shadow:0 14px 28px -16px rgba(0,0,0,.7);
+  }
+  .search-row{display:flex;gap:8px;align-items:center;}
+  .search-icon{color:var(--muted);flex-shrink:0;}
+  .search-row input{
+    flex:1;background:var(--bg-1);border:1px solid var(--line);
+    border-radius:11px;padding:12px 14px;color:var(--text);
+    font-family:'Zen Maru Gothic',sans-serif;font-size:15px;outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .search-row input::placeholder{color:var(--muted-2, #576375);}
+  .search-row input:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,125,31,.18);}
+  .hint{margin-top:9px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+  /* ---- Ranks overview table ---- */
+  .section-label{
+    font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;
+    letter-spacing:.1em;text-transform:uppercase;margin:20px 2px 9px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .section-label::before{content:"";width:4px;height:12px;background:var(--orange);border-radius:2px;}
+
+  .table-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .withdrawn-item{
+    padding:12px 14px;border-bottom:1px solid var(--line-soft);
+  }
+  .withdrawn-item:last-child{border-bottom:none;}
+  .withdrawn-name{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;
+  }
+  .withdrawn-name::before{content:"退会";
+    font-size:10px;font-weight:700;color:#e2574c;
+    background:rgba(226,87,76,.12);border-radius:999px;padding:2px 8px;
+  }
+  .withdrawn-acct{
+    display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+    font-size:12px;color:var(--muted);padding:4px 0 4px 4px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .withdrawn-acct-name{color:var(--text);font-family:inherit;min-width:110px;}
+  .withdrawn-acct-rank{color:var(--accent,#ff7d1f);}
+  .withdrawn-acct-id{color:var(--muted);}
+  .withdrawn-empty{padding:14px;font-size:12px;color:var(--muted);text-align:center;}
+  table.ranks{width:100%;border-collapse:collapse;}
+  table.ranks th{
+    text-align:left;font-size:10px;color:var(--muted);font-weight:700;
+    padding:10px 14px;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;
+    text-transform:uppercase;border-bottom:1px solid var(--line-soft);
+    background:rgba(255,125,31,.06);
+  }
+  table.ranks th.num{text-align:right;}
+  table.ranks td{
+    padding:11px 14px;font-size:13.5px;border-bottom:1px solid var(--line-soft);
+    vertical-align:middle;
+  }
+  table.ranks tr:last-child td{border-bottom:none;}
+  table.ranks tr:hover td{background:rgba(255,125,31,.04);}
+  table.ranks td.name{font-weight:700;white-space:nowrap;}
+  table.ranks td.ranks-list{text-align:right;}
+  table.ranks td.ranks-list .r{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:38px;background:linear-gradient(180deg,var(--blue),var(--blue-dark));
+    color:#fff;border:1px solid rgba(255,255,255,.25);
+    border-radius:20px;padding:2px 9px;margin-left:5px;
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;
+  }
+  table.ranks td.ranks-list .r.closed-r{
+    background:linear-gradient(180deg,#5a6472,#333c48);opacity:.7;
+    text-decoration:line-through;
+  }
+  .table-empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:12.5px;}
+
+  /* ---- Results (detail cards) ---- */
+  .results{display:flex;flex-direction:column;gap:12px;}
+  .person{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;animation:fadeIn .3s ease both;
+  }
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .person-head{
+    display:flex;align-items:center;gap:10px;
+    padding:12px 14px;border-bottom:1px solid var(--line);
+    background:linear-gradient(90deg, rgba(255,125,31,.10), transparent 70%);
+  }
+  .avatar{
+    overflow:hidden;
+    width:34px;height:34px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Shippori Mincho',serif;font-weight:800;color:#1a0e05;font-size:14px;
+    background:radial-gradient(circle at 32% 28%, #ffe9b0, var(--gold) 35%, var(--orange) 75%, var(--orange-dark) 100%);
+    border:2px solid rgba(255,255,255,.35);
+  }
+  .person-name-wrap{flex:1;cursor:pointer;min-width:0;}
+  .person-name{font-weight:700;font-size:15px;}
+  .person-name .tap-hint{margin-top:1px;}
+  .person-badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px;cursor:pointer;flex-shrink:0;}
+  .badge-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+  .acct-count{
+    font-size:10.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;
+    background:var(--bg-1);border:1px solid var(--line);border-radius:20px;padding:3px 9px;
+  }
+  .time-badge{
+    font-size:10.5px;color:#8be89a;font-weight:700;
+    background:rgba(139,232,154,.1);border:1px solid rgba(139,232,154,.4);
+    border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:3px;
+  }
+
+  .filter-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:0;margin:12px 0;overflow:hidden;
+  }
+  .filter-header{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    color:var(--text);font-weight:700;font-size:13.5px;
+    font-family:'Zen Maru Gothic',sans-serif;padding:14px 16px;
+  }
+  .switch{position:relative;display:inline-block;width:44px;height:26px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;position:absolute;}
+  .switch-track{
+    position:absolute;inset:0;background:var(--bg-1);border:1px solid var(--line);
+    border-radius:20px;transition:background .2s,border-color .2s;cursor:pointer;
+  }
+  .switch-thumb{
+    position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
+    background:var(--muted);transition:transform .2s,background .2s;
+  }
+  .switch input:checked + .switch-track{background:linear-gradient(120deg,var(--orange),var(--orange-2));border-color:var(--orange);}
+  .switch input:checked + .switch-track .switch-thumb{transform:translateX(18px);background:#fff;}
+  .filter-body-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease;}
+  .filter-body-wrap.open{grid-template-rows:1fr;}
+  .filter-body-inner{overflow:hidden;}
+  .filter-body-inner > *{padding-left:16px;padding-right:16px;}
+  .filter-body-inner > .filter-group:first-child{padding-top:2px;}
+  .filter-body-inner > .filter-reset{padding-bottom:14px;padding-top:6px;}
+  .filter-group{margin-bottom:8px;}
+  .filter-group:last-child{margin-bottom:0;}
+  .filter-label{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px;}
+  .filter-radio{display:flex;gap:6px;}
+  .filter-radio.wrap4{flex-wrap:wrap;}
+  .filter-radio.wrap4 .radio-btn{flex:1 1 calc(50% - 3px);}
+  .radio-btn{
+    flex:1;border:1px solid var(--line);background:var(--bg-1);color:var(--muted);
+    font-size:12px;font-weight:700;padding:7px 8px;border-radius:10px;cursor:pointer;
+    font-family:'Zen Maru Gothic',sans-serif;transition:background .15s,color .15s,border-color .15s;
+    line-height:1.2;
+  }
+  .radio-btn.active{background:linear-gradient(120deg,var(--orange),var(--orange-2));color:#1a0e05;border-color:var(--orange);}
+  .filter-reset{
+    font-size:11px;color:var(--muted);background:none;border:none;
+    text-decoration:underline;cursor:pointer;margin-top:6px;padding:0;
+  }
+  .accounts-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease;}
+  .person.accounts-open .accounts-wrap{grid-template-rows:1fr;}
+  .accounts-inner{overflow:hidden;}
+  .accounts{display:flex;flex-direction:column;}
+  .acct{padding:12px 14px;border-top:1px dashed var(--line-soft);cursor:pointer;transition:background .15s;}
+  .acct:first-child{border-top:none;}
+  .acct:hover{background:rgba(255,125,31,.04);}
+  .acct.closed{cursor:default;background:rgba(255,255,255,.015);}
+  .acct.closed:hover{background:rgba(255,255,255,.015);}
+  .acct.closed .acct-name{color:var(--muted);}
+  .acct.closed .rank-badge{
+    background:linear-gradient(180deg,#5a6472,#333c48);
+    box-shadow:0 0 0 3px rgba(255,255,255,.05), 0 4px 10px rgba(0,0,0,.4);
+  }
+  .closed-badge{
+    display:inline-flex;align-items:center;gap:4px;
+    background:rgba(226,87,76,.14);border:1px solid rgba(226,87,76,.5);
+    color:#ff8478;font-size:10.5px;font-weight:700;
+    padding:2px 8px;border-radius:20px;margin-top:4px;
+  }
+  .closed-badge::before{content:"";width:5px;height:5px;border-radius:50%;background:#e2574c;}
+  .status-badge{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;
+    margin-top:4px;letter-spacing:.02em;
+  }
+  .status-badge::before{content:"";width:6px;height:6px;border-radius:50%;}
+  .status-badge.updated{background:rgba(46,158,91,.15);color:#4fd587;}
+  .status-badge.updated::before{background:#4fd587;}
+  .status-badge.unknown{background:rgba(201,138,31,.15);color:#e0a83f;}
+  .status-badge.unknown::before{background:#e0a83f;}
+  .status-badge.unsure{background:rgba(138,143,152,.18);color:#aab0ba;}
+  .status-badge.unsure::before{background:#aab0ba;}
+  .acct-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .acct-name{font-weight:600;font-size:14px;}
+  .tap-hint{font-size:10.5px;color:var(--muted);margin-top:2px;}
+
+  .rank-badge{
+    flex-shrink:0;width:52px;height:52px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #bfe3ff, var(--blue) 45%, var(--blue-dark) 100%);
+    border:2px solid rgba(255,255,255,.4);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    box-shadow:0 0 0 3px rgba(63,169,255,.15), 0 4px 10px rgba(0,0,0,.4);
+  }
+  .rank-badge .rlabel{font-size:7px;font-weight:700;color:#eaf6ff;letter-spacing:.05em;line-height:1;}
+  .rank-badge .rnum{font-size:13px;font-weight:800;color:#fff;line-height:1.2;font-family:'JetBrains Mono',monospace;}
+
+  .acct-id-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease;}
+  .acct.open .acct-id-wrap{grid-template-rows:1fr;}
+  .acct-id-inner{overflow:hidden;}
+
+  .memo-btn{
+    flex-shrink:0;display:flex;align-items:center;gap:4px;
+    background:var(--bg-1);border:1px solid var(--line);border-radius:20px;
+    padding:5px 10px;font-size:11px;font-weight:700;color:var(--muted);
+    font-family:'Zen Maru Gothic',sans-serif;cursor:pointer;transition:background .15s,color .15s;
+  }
+  .memo-btn:hover{background:rgba(255,125,31,.1);color:var(--text);}
+  .memo-btn.has-note{color:var(--gold);border-color:rgba(255,213,74,.4);}
+  .person.memo-open .memo-btn{background:rgba(255,125,31,.16);color:var(--text);}
+  .memo-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease;}
+  .person.memo-open .memo-wrap{grid-template-rows:1fr;}
+  .memo-inner{overflow:hidden;}
+  .memo-body{
+    padding:10px 14px;font-size:12.5px;line-height:1.6;color:var(--text);
+    background:rgba(255,213,74,.06);border-bottom:1px solid var(--line);
+    white-space:pre-wrap;
+  }
+  .memo-body.empty{color:var(--muted);}
+  .acct-id-row{
+    display:flex;align-items:center;gap:8px;margin-top:10px;
+    background:var(--bg-1);border:1px solid var(--line);border-radius:9px;padding:9px 10px;
+  }
+  .acct-id{
+    font-family:'JetBrains Mono',monospace;font-size:13.5px;color:var(--gold);
+    letter-spacing:.03em;flex:1;overflow-x:auto;white-space:nowrap;
+  }
+  .copy-btn{
+    flex-shrink:0;border:1px solid var(--orange);background:rgba(255,125,31,.14);
+    color:var(--orange);font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:7px;
+    cursor:pointer;font-family:'Zen Maru Gothic',sans-serif;transition:background .15s,transform .1s;
+  }
+  .copy-btn:hover{background:rgba(255,125,31,.26);}
+  .copy-btn:active{transform:scale(.95);}
+  .copy-btn.copied{background:var(--orange);color:#1a0e05;border-color:var(--orange);}
+
+  .empty, .loading{text-align:center;color:var(--muted);font-size:13px;padding:44px 10px;}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);
+    background:var(--panel-2);border:1px solid var(--orange);color:var(--gold);
+    padding:11px 20px;border-radius:30px;font-size:13px;box-shadow:0 10px 28px rgba(0,0,0,.55);
+    opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;z-index:50;
+    font-family:'Zen Maru Gothic',sans-serif;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .footer-note{
+    text-align:center;color:var(--muted);font-size:10.5px;margin-top:26px;line-height:1.7;
+  }
+
+  html{color-scheme:dark;}
+  input,textarea,button,select{
+    color:inherit;
+    -webkit-text-fill-color:currentColor;
+  }
+
+</style>
+<style>
+  .update-banner{
+    display:flex; align-items:center; gap:10px;
+    background:linear-gradient(135deg,#2b3a1f,#1f2e17);
+    border:1px solid #6fbf3a;
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:14px;
+    box-shadow:0 0 0 1px rgba(111,191,58,.15) inset;
+  }
+  .avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  .update-icon{ font-size:20px; flex:none; }
+  .update-text{ color:#d9f5c4; font-size:13.5px; line-height:1.4; }
+  .update-text strong{ color:#9be86a; }
+  #updateNames{ color:#fff; font-weight:700; }
+</style>
+</head>
+<body>
+  <div class="hud">
+    <div class="wrap" style="padding:0;">
+      <div class="hud-row">
+        <div class="hud-badge"><span class="flame"></span><span>MONSTER STRIKE</span></div>
+        <div class="member-count">
+          <svg class="clover" viewBox="0 0 24 24" fill="#8be86a"><path d="M12 2a3 3 0 0 0-3 3 3 3 0 0 0 .3 1.3A3 3 0 0 0 5 9a3 3 0 0 0 3 3h.3A3 3 0 0 0 5 15a3 3 0 0 0 3 3 3 3 0 0 0 1.3-.3A3 3 0 0 0 12 21a3 3 0 0 0 2.7-3.3A3 3 0 0 0 16 18a3 3 0 0 0 3-3 3 3 0 0 0-3.3-3H16a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-1.3.3A3 3 0 0 0 12 2z"/></svg>
+          <span id="hudCount">0人登録</span>
+        </div>
+      </div>
+      <h1>絆グループ アカウント検索</h1>
+      <p class="sub">LINE名で検索 → 垢の名前とランクが表示 → タップしてIDをコピー</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="update-banner" id="updateBanner">
+      <span class="update-icon">🔔</span>
+      <span class="update-text" id="updateText"></span>
+    </div>
+
+    <div class="search-card">
+      <div class="search-row">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="LINE名を入力(部分一致でOK)" autocomplete="off">
+      </div>
+      <div class="hint" id="resultHint"></div>
+    </div>
+
+    <div class="filter-card">
+      <div class="filter-header">
+        <span>あなたの情報</span>
+        <label class="switch">
+          <input type="checkbox" id="filterMasterSwitch">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+        </label>
+      </div>
+      <div class="filter-body-wrap" id="filterBodyWrap"><div class="filter-body-inner">
+      <div class="filter-group">
+        <div class="filter-label">プレイする神殿クエスト</div>
+        <div class="filter-radio" data-filter-group="temple">
+          <button class="radio-btn" data-value="闇時2">闇時2</button>
+          <button class="radio-btn" data-value="その他">その他</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">あなたのアカウント数</div>
+        <div class="filter-radio" data-filter-group="acct">
+          <button class="radio-btn" data-value="1垢">1垢</button>
+          <button class="radio-btn" data-value="複数垢">複数垢</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">あなたの番号</div>
+        <div class="filter-radio" data-filter-group="number">
+          <button class="radio-btn" data-value="番号無し">番号無し</button>
+          <button class="radio-btn" data-value="777">777</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">厳選キャラを使用しますか?</div>
+        <div class="filter-radio" data-filter-group="senkou">
+          <button class="radio-btn" data-value="使用する">使用する</button>
+          <button class="radio-btn" data-value="使用しない">使用しない</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">ワンパンキャラ所持者ですか?</div>
+        <div class="filter-radio" data-filter-group="onepunch">
+          <button class="radio-btn" data-value="はい">はい</button>
+          <button class="radio-btn" data-value="いいえ">いいえ</button>
+        </div>
+      </div>
+      <button class="filter-reset" id="filterReset">条件をリセット</button>
+      </div></div>
+    </div>
+
+    <div class="section-label">退会者情報</div>
+    <div class="table-card">
+      <div id="withdrawnWrap"></div>
+    </div>
+
+    <div class="section-label">ランク一覧</div>
+    <div class="table-card">
+      <div id="tableWrap"></div>
+    </div>
+
+    <div class="section-label">垢の詳細・IDコピー</div>
+    <div id="results" class="results"></div>
+
+    <p class="footer-note">絆グループ内共有用ツール / データは手動更新です</p>
+  </div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ データはここを書き換えて差し替え ============ */
+const AVATARS = {"ai(番号なし)":"data:image/jpeg;base64,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"};
+const MEMBERS = [
+  { lineName: "くどまさ", note: "神殿:なんでもOK\nランク差:175以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ\n【追記】光神殿でルシファーワンパンが好きですが、闇時でも大丈夫です\n3垢なので、1垢の方は3垢\n2神殿（サヴサヴは溜まりきらなくても）2垢の方は2垢ずつで2神殿だと助かります", accounts: [
+    { accountName: "くどぽん(*´*)", rank: "2099", gameId: "787329974", rankStatus: "updated" },
+    { accountName: "くどぱん(*´ω`*)", rank: "2099", gameId: "902520144026", rankStatus: "updated" },
+    { accountName: "サヴ(;´Д`)", rank: "717", gameId: "333561807", rankStatus: "updated" },
+  ]},
+  { lineName: "藤岡", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】1垢勢は上3垢まで出します。\n2垢勢以上は4垢出します。\n5垢以上は5垢出します。", accounts: [
+    { accountName: "私はルリ", rank: "2500", gameId: "131291013582", rankStatus: "updated" },
+    { accountName: "私はルリ②", rank: "2007", gameId: "168606364132", rankStatus: "updated" },
+    { accountName: "私はルリ③", rank: "1504", gameId: "601468556", rankStatus: "updated" },
+    { accountName: "私はルリ4号線", rank: "940", gameId: "716483347041", rankStatus: "updated" },
+    { accountName: "瑠璃⑤", rank: "564", gameId: "734717689844", rankStatus: "updated" },
+  ]},
+  { lineName: "すぅちゃん", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】基本火の1貼るのでよろしくお願いします！", accounts: [
+    { accountName: "ススム①", rank: "2500", gameId: "515783919", rankStatus: "updated" },
+    { accountName: "ススム②", rank: "1049", gameId: "833959189716", rankStatus: "updated" },
+    { accountName: "ススム④", rank: "512", gameId: "931146110012", closed: true, rankStatus: "updated" },
+    { accountName: "ススム", rank: "731", gameId: "789032942560", closed: true, rankStatus: "updated" },
+  ]},
+  { lineName: "かれん", accounts: [
+    { accountName: "ビックマムの妹かれん", rank: "1500", gameId: "754405776830", rankStatus: "updated" },
+  ]},
+  { lineName: "田中", accounts: [
+    { accountName: "1", rank: "2281", gameId: "866595039852", closed: true, rankStatus: "updated" },
+    { accountName: "2", rank: "1243", gameId: "167989412548", closed: true, rankStatus: "updated" },
+    { accountName: "4", rank: "1056", gameId: "862736414101", rankStatus: "updated" },
+    { accountName: "3", rank: "1064", gameId: "896785504970", rankStatus: "updated" },
+  ]},
+  { lineName: "莉奈", note: "神殿:なんでもOK\nランク差:100以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】メインと325差、サブ2日(4回)に分けて貯まる垢ならOKです!", accounts: [
+    { accountName: "ぱぴもっちo'ㅅ'o", rank: "1419", gameId: "400361501664", rankStatus: "updated" },
+    { accountName: "サブもっち①o'ㅅ'o", rank: "802", gameId: "221837494456", rankStatus: "updated" },
+  ]},
+  { lineName: "SUGURU(番号なし)", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ\n【追記】自分は番号無しです。", accounts: [
+    { accountName: "SUGURU①", rank: "2006", gameId: "845504854", rankStatus: "updated" },
+    { accountName: "SUGURU②", rank: "139", gameId: "163414791951", rankStatus: "updated" },
+  ]},
+  { lineName: "YUUKI", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:777のみ\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】1垢以上325差あれば他の垢は複数の日にわけて貯める等でも大丈夫です\nこちら闇時2用喜多ちゃんのみ出せます\n基本的に21~24時ごろに貯められる方いましたらお願いいたします", accounts: [
+    { accountName: "Y・I", rank: "692", gameId: "722096972443", rankStatus: "updated" },
+  ]},
+  { lineName: "あきひろ", accounts: [
+    { accountName: "2×4", rank: "756", gameId: "167017160", rankStatus: "updated" },
+  ]},
+  { lineName: "コウヘイ", accounts: [
+    { accountName: "Kohei。", rank: "2087", gameId: "416959932074", rankStatus: "updated" },
+  ]},
+  { lineName: "ゆりな", note: "神殿:なんでもOK\nランク差:175以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:NG\nワンパンキャラのみ", accounts: [
+    { accountName: "トンちゃん@ゆりなガチャ禁", rank: "597", gameId: "87457461458", rankStatus: "updated" },
+    { accountName: "トンちゃん@ゆりな", rank: "710", gameId: "256947852", rankStatus: "updated" },
+    { accountName: "伽羅栖ʚ✞ɞヤマピー", rank: "2043", gameId: "910812272", rankStatus: "updated" },
+    { accountName: "伽羅栖@ヤマピー3", rank: "816", gameId: "660320951451", rankStatus: "updated" },
+  ]},
+  { lineName: "⋈フレドラ・クリア♡", note: "神殿:闇時2のみ\nランク差:気にしない\n垢:1垢でもOK\n番号:777のみ\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】ワンパンキャラ出します", accounts: [
+    { accountName: "NT・R18 メス〇キ", rank: "885", gameId: "503625563265", rankStatus: "updated" },
+    { accountName: "T・SF メス〇キママ", rank: "569", gameId: "599171176743", rankStatus: "updated" },
+  ]},
+  { lineName: "柳本 こうや", note: "神殿:なんでもOK\nランク差:100以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】・ワンパン枠は闇時2で喜多ちゃん出せます\n・仕事の関係で平日は朝の10時頃か深夜1時頃に募集をすることが多いですが土日は基本いつでもできます。", accounts: [
+    { accountName: "やなサブ1", rank: "706", gameId: "5968118760", rankStatus: "updated" },
+    { accountName: "やなサブ2", rank: "88", gameId: "487739571303", rankStatus: "updated" },
+    { accountName: "やな", rank: "888", gameId: "963721647794", rankStatus: "updated" },
+  ]},
+  { lineName: "かずくん", accounts: [
+    { accountName: "かずくん[絆感謝]", rank: "1363", gameId: "605007106500", rankStatus: "updated" },
+  ]},
+  { lineName: "の", note: "神殿:闇時2のみ\nランク差:325以上\n垢:1垢でもOK\n番号:777のみ\n厳選キャラ:NG\nワンパンキャラなくても大丈夫\n【追記】週4~5回貯めれる方\n時間帯午前から14時、その他不定期\n貯めきり条件合わない方フレンドお断りしてます。ランク1200以上の方のみお願いします", accounts: [
+    { accountName: "のサブ", rank: "659", gameId: "800663240812", rankStatus: "updated" },
+    { accountName: "の", rank: "659", gameId: "797220657225", rankStatus: "updated" },
+  ]},
+  { lineName: "よしとみ", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫", accounts: [
+    { accountName: "久住⁰", rank: "2500", gameId: "551993492721", rankStatus: "updated" },
+    { accountName: "久住¹", rank: "784", gameId: "331090264115", rankStatus: "updated" },
+  ]},
+  { lineName: "ai(番号なし)", note: "神殿:闇時2のみ\nランク差:175以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】自演マルチで固定ナンバー組んでいるため「鍵なし」を強く希望しています。\n私がクエスト貼れば入ってくるフレンドさんはいないためホストいたします。", accounts: [
+    { accountName: "*.ゆきんこ.*", rank: "1557", gameId: "726912187193", rankStatus: "updated" },
+    { accountName: "みみっち@ゆこ2", rank: "840", gameId: "168498797684", rankStatus: "updated" },
+    { accountName: "まるっち@ゆこ3", rank: "840", gameId: "535920945416", rankStatus: "updated" },
+  ]},
+  { lineName: "おき", accounts: [
+    { accountName: "しん", rank: "2500", gameId: "956426833888", rankStatus: "updated" },
+    { accountName: "しん", rank: "556", gameId: "698292106584", rankStatus: "updated" },
+    { accountName: "しんさぶ", rank: "530", gameId: "580787362213", rankStatus: "updated" },
+  ]},
+  { lineName: "暖", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】ランク325離れてる方お願い致します。", accounts: [
+    { accountName: "べてぃ♣'3☆〜", rank: "2500", gameId: "353327454589", rankStatus: "updated" },
+    { accountName: "べてぃ♣''''3☆〜", rank: "535", gameId: "568875722954", rankStatus: "updated" },
+    { accountName: "べてぃ♣'''3☆〜", rank: "729", gameId: "370768412026", closed: true, rankStatus: "updated" },
+    { accountName: "べてぃ♣\"3☆〜", rank: "882", gameId: "149245135055", rankStatus: "updated" },
+  ]},
+  { lineName: "唯人", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫", accounts: [
+    { accountName: "ゆいぽん", rank: "2035", gameId: "487155252", rankStatus: "updated" },
+  ]},
+  { lineName: "はやと(hyt)", accounts: [
+    { accountName: "1st hyt", rank: "1433", gameId: "229543871633", rankStatus: "updated" },
+    { accountName: "2nd hyt", rank: "566", gameId: "837202595851", rankStatus: "updated" },
+    { accountName: "3rd hyt", rank: "415", gameId: "865349198241", rankStatus: "updated" },
+    { accountName: "4th hyt", rank: "495", gameId: "87688703704", rankStatus: "updated" },
+  ]},
+  { lineName: "焔", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫", accounts: [
+    { accountName: "焔", rank: "2006", gameId: "248619456569", rankStatus: "updated" },
+    { accountName: "焔　sub1", rank: "1690", gameId: "907356852441", rankStatus: "updated" },
+    { accountName: "焔サブ2", rank: "355", gameId: "407511331433", rankStatus: "updated" },
+    { accountName: "焔サブ3", rank: "322", gameId: "567560201070", rankStatus: "updated" },
+  ]},
+  { lineName: "ようへい", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫", accounts: [
+    { accountName: "YOUHEI", rank: "1660", gameId: "940200717", rankStatus: "updated" },
+  ]},
+  { lineName: "さやか", note: "神殿:なんでもOK\nランク差:325以上\n垢:複数垢のみ\n番号:777のみ\n厳選キャラ:OK\nワンパンキャラのみ", accounts: [
+    { accountName: "コマみちゃん", rank: "1905", gameId: "412896132", rankStatus: "updated" },
+    { accountName: "コマさん", rank: "2325", gameId: "603643580332", rankStatus: "updated" },
+  ]},
+  { lineName: "こ", note: "神殿:なんでもOK\nランク差:175以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】ランク差が近くて溜まりにくい方もチリツモで大丈夫な方は是非自分の3垢として欲しいです！", accounts: [
+    { accountName: "すかぽん👑3松", rank: "1530", gameId: "327771767", rankStatus: "updated" },
+    { accountName: "すかぽん👑3梅", rank: "810", gameId: "469314978013", rankStatus: "updated" },
+    { accountName: "すかぽん👑3竹", rank: "1089", gameId: "842722128614", rankStatus: "updated" },
+  ]},
+  { lineName: "たに", note: "神殿:なんでもOK\nランク差:100以上\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ\n【追記】ワンパンできれば誰とでもやりたいです。\n自分はニケとティーチを所持しています。", accounts: [
+    { accountName: "みやむら☆真面目です", rank: "970", gameId: "788461597168", rankStatus: "updated" },
+    { accountName: "おとさか", rank: "593", gameId: "118748871282", rankStatus: "updated" },
+  ]},
+  { lineName: "のえる", note: "神殿:なんでもOK\nランク差:325以上\n垢:1垢でもOK\n番号:777のみ\n厳選キャラ:OK\nワンパンキャラのみ", accounts: [
+    { accountName: "でっぷさん➌", rank: "2240", gameId: "486755007379", rankStatus: "updated" },
+    { accountName: "でっぷさん2nd➌", rank: "683", gameId: "698461944617", rankStatus: "updated" },
+    { accountName: "でっぷさん3rd➌", rank: "495", gameId: "264403645106", rankStatus: "updated" },
+  ]},
+  { lineName: "kaori", note: "神殿:なんでもOK\nランク差:気にしない\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫", accounts: [
+    { accountName: "星空凛　はこみっつ", rank: "652", gameId: "929031079289", rankStatus: "updated" },
+    { accountName: "μ'sicforever", rank: "278", gameId: "939757132862", rankStatus: "updated" },
+  ]},
+  { lineName: "なるせ", note: "神殿:なんでもOK\nランク差:気にしない\n垢:複数垢のみ\n番号:番号無しでもOK\n厳選キャラ:NG\nワンパンキャラのみ", accounts: [
+    { accountName: "1", rank: "2000", gameId: "089726810", rankStatus: "updated" },
+    { accountName: "2", rank: "823", gameId: "556758655404", rankStatus: "updated" },
+    { accountName: "3", rank: "679", gameId: "995566727498", rankStatus: "updated" },
+    { accountName: "5", rank: "672", gameId: "84282777244", rankStatus: "updated" },
+  ]},
+  { lineName: "鯖戸", note: "神殿:闇時2のみ\nランク差:気にしない\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ\n【追記】自分のランクが低いので、なるべくランク差ある方と回したいです", accounts: [
+    { accountName: "UknowWholam☆", rank: "1000", gameId: "195513238729", rankStatus: "updated" },
+  ]},
+  { lineName: "りょうへい", note: "神殿:なんでもOK\nランク差:気にしない\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\n【追記】参加初めてで、尚且つ仕事の関係上毎日出来ないかもしれませんがよろしくお願いします", accounts: [
+    { accountName: "へい", rank: "837", gameId: "292637589668", rankStatus: "updated" },
+    { accountName: "Android", rank: "581", gameId: "410862650239", rankStatus: "updated" },
+  ]},
+  { lineName: "kuga", note: "神殿:なんでもOK\nランク差:気にしない\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ", accounts: [
+    { accountName: "kuga", rank: "1354", gameId: "197953774290", rankStatus: "updated" },
+  ]},
+  { lineName: "ゆーだい", note: "神殿:闇時2のみ\nランク差:気にしない\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラのみ", accounts: [
+    { accountName: "ゆーだい①", rank: "1657", gameId: "685740970", rankStatus: "updated" },
+    { accountName: "ゆーだい②", rank: "1312", gameId: "832785185", rankStatus: "updated" },
+    { accountName: "ゆーだい③", rank: "1252", gameId: "403287967", rankStatus: "updated" },
+    { accountName: "ゆーだい④", rank: "1102", gameId: "336444019", rankStatus: "updated" },
+  ]},
+  { lineName: "馬田　健司", note: "神殿:なんでもOK\nランク差:気にしない\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫\nグループ等はあまりわからないのですがよろしくお願い致します🙇", accounts: [
+    { accountName: "馬田　健司", rank: "728", gameId: "931245275159", rankStatus: "updated" },
+  ]},
+  { lineName: "翔一", note: "条件なし", accounts: [
+    { accountName: "翔一①", rank: "1095", gameId: "247169527", rankStatus: "updated" },
+    { accountName: "翔一②", rank: "657", gameId: "262603693907", rankStatus: "updated" },
+  ]},
+];
+/* ============================================================ */
+
+const resultsEl = document.getElementById('results');
+const tableWrap = document.getElementById('tableWrap');
+const resultHint = document.getElementById('resultHint');
+const searchInput = document.getElementById('searchInput');
+const toastEl = document.getElementById('toast');
+const hudCount = document.getElementById('hudCount');
+
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=>toastEl.classList.remove('show'), 1600);
+}
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function initial(name){ return (name||'?').trim().charAt(0); }
+
+const activeFilters = {
+  temple: '闇時2',
+  acct: '1垢',
+  number: '番号無し',
+  senkou: '使用しない',
+  onepunch: 'はい'
+};
+let filterEnabled = false;
+
+function categoryMatch(note, group){
+  const selected = activeFilters[group];
+  switch(group){
+    case 'temple':
+      // 闇時2を選んだら全員条件クリア。その他を選ぶとなんでもOKの人のみ
+      if(selected === '闇時2') return true;
+      return note.includes('神殿:なんでもOK');
+    case 'acct':
+      // 複数垢を選んだら全員クリア。1垢を選ぶと「1垢でもOK」の人のみ
+      if(selected === '複数垢') return true;
+      return note.includes('垢:1垢でもOK');
+    case 'number':
+      // 777を選ぶとどちらでも該当。番号無しを選ぶと「番号無しでもOK」の人のみ(777のみは除外)
+      if(selected === '777') return true;
+      return note.includes('番号:番号無しでもOK');
+    case 'senkou':
+      // 使用しないを選ぶとどちらでも該当。使用するを選ぶとOKの人のみ(NGは除外)
+      if(selected === '使用しない') return true;
+      return note.includes('厳選キャラ:OK');
+    case 'onepunch':
+      // はいを選ぶとどちらでも該当。いいえを選ぶと「ワンパンキャラのみ」希望の人は除外
+      if(selected === 'はい') return true;
+      return !note.includes('ワンパンキャラのみ');
+    default:
+      return true;
+  }
+}
+
+const DEFAULT_NOTE = '神殿:なんでもOK\n垢:1垢でもOK\n番号:番号無しでもOK\n厳選キャラ:OK\nワンパンキャラなくても大丈夫';
+
+function matchesFilters(person){
+  if(!filterEnabled) return true;
+  const note = person.note || DEFAULT_NOTE;
+  return Object.keys(activeFilters).every(group => categoryMatch(note, group));
+}
+
+function getFiltered(){
+  const q = searchInput.value.trim().toLowerCase();
+  let list = MEMBERS;
+  if(q) list = list.filter(m => m.lineName.toLowerCase().includes(q));
+  list = list.filter(matchesFilters);
+  return list;
+}
+
+function renderTable(list){
+  if(MEMBERS.length === 0){
+    tableWrap.innerHTML = '<div class="table-empty">まだ登録がありません</div>';
+    return;
+  }
+  if(list.length === 0){
+    tableWrap.innerHTML = '<div class="table-empty">該当する人がいません</div>';
+    return;
+  }
+  tableWrap.innerHTML = `
+    <table class="ranks">
+      <thead><tr><th>LINE名</th><th class="num">ランク</th></tr></thead>
+      <tbody>
+        ${list.map(p => `
+          <tr>
+            <td class="name">${escapeHtml(p.lineName)}</td>
+            <td class="ranks-list">${p.accounts.map(a=>`<span class="r${a.closed?' closed-r':''}">${escapeHtml(a.rank)}</span>`).join('')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function render(){
+  const list = getFiltered();
+  renderTable(list);
+
+  const q = searchInput.value.trim();
+  const filtersActive = filterEnabled;
+
+  if(MEMBERS.length === 0){
+    resultsEl.innerHTML = '<div class="empty">まだ登録がありません。</div>';
+    resultHint.textContent = '';
+    return;
+  }
+  if(list.length === 0){
+    const msg = q
+      ? '「'+escapeHtml(q)+'」に一致するLINE名が見つかりません。'
+      : '条件に一致するメンバーが見つかりません。';
+    resultsEl.innerHTML = '<div class="empty">'+msg+'</div>';
+    resultHint.textContent = '';
+    return;
+  }
+  resultHint.textContent = (q || filtersActive) ? `${list.length}件ヒット` : `全${MEMBERS.length}件`;
+
+function extractRankDiff(note){
+  if(!note) return null;
+  const m = note.match(/ランク差[:：]?\s*(\d+)\s*(?:差)?以上/);
+  return m ? m[1] : null;
+}
+
+resultsEl.innerHTML = list.map((person, pi) => {
+    const rankDiff = extractRankDiff(person.note);
+    return `
+    <div class="person" data-pidx="${pi}">
+      <div class="person-head">
+        <div class="avatar">${AVATARS[person.lineName] ? `<img src="${AVATARS[person.lineName]}" alt="">` : escapeHtml(initial(person.lineName))}</div>
+        <div class="person-name-wrap" data-acct-toggle="${pi}">
+          <div class="person-name">${escapeHtml(person.lineName)}</div>
+          <div class="tap-hint">タップして表示</div>
+        </div>
+        <div class="person-badges" data-memo-toggle="${pi}">
+          <div class="badge-row">
+            <div class="acct-count">${person.accounts.length}垢</div>
+            ${rankDiff ? `<div class="time-badge rankdiff-badge">ランク差${escapeHtml(rankDiff)}以上</div>` : ''}
+          </div>
+          <div class="badge-row">
+            <button class="memo-btn${person.note?' has-note':''}">募集条件${(person.note && person.note.includes('【追記】'))?'(追記あり)':''}</button>
+          </div>
+        </div>
+      </div>
+      <div class="memo-wrap"><div class="memo-inner">
+        <div class="memo-body${person.note?'':' empty'}">${person.note ? escapeHtml(person.note) : 'メモは登録されていません。'}</div>
+      </div></div>
+      <div class="accounts-wrap"><div class="accounts-inner">
+      <div class="accounts">
+        ${person.accounts.map((a, ai) => `
+          <div class="acct${a.closed?' closed':''}" data-idx="${pi}_${ai}" data-closed="${a.closed?'1':'0'}">
+            <div class="acct-top">
+              <div>
+                <div class="acct-name">${escapeHtml(a.accountName)}</div>
+                ${a.closed
+                  ? `<div class="closed-badge">募集締切</div>`
+                  : `<div class="tap-hint">タップしてID表示</div>`}
+                ${a.rankStatus === 'updated'
+                  ? `<div class="status-badge updated">ランク更新済み</div>`
+                  : a.rankStatus === 'unknown'
+                    ? `<div class="status-badge unknown">未確認(スクショなし)</div>`
+                    : a.rankStatus === 'unsure'
+                      ? `<div class="status-badge unsure">未確定</div>`
+                      : ''}
+              </div>
+              <div class="rank-badge"><span class="rlabel">RANK</span><span class="rnum">${escapeHtml(a.rank)}</span></div>
+            </div>
+            ${a.closed ? '' : `
+            <div class="acct-id-wrap"><div class="acct-id-inner">
+              <div class="acct-id-row">
+                <div class="acct-id">${escapeHtml(a.gameId)}</div>
+                <button class="copy-btn" data-copy="${escapeHtml(a.gameId)}">コピー</button>
+              </div>
+            </div></div>
+            `}
+          </div>
+        `).join('')}
+      </div>
+      </div></div>
+    </div>
+  `;
+  }).join('');
+}
+
+resultsEl.addEventListener('click', async (e)=>{
+  const badgesWrap = e.target.closest('.person-badges');
+  if(badgesWrap){
+    e.stopPropagation();
+    const personEl = badgesWrap.closest('.person');
+    personEl.classList.toggle('memo-open');
+    return;
+  }
+  const nameWrap = e.target.closest('.person-name-wrap');
+  if(nameWrap){
+    e.stopPropagation();
+    const personEl = nameWrap.closest('.person');
+    personEl.classList.toggle('accounts-open');
+    return;
+  }
+  const copyBtn = e.target.closest('.copy-btn');
+  if(copyBtn){
+    e.stopPropagation();
+    const val = copyBtn.getAttribute('data-copy');
+    try{
+      await navigator.clipboard.writeText(val);
+      copyBtn.textContent = '✓';
+      copyBtn.classList.add('copied');
+      toast('IDをコピーしました');
+      setTimeout(()=>{ copyBtn.textContent='コピー'; copyBtn.classList.remove('copied'); }, 1200);
+    }catch(err){
+      toast('コピーに失敗しました');
+    }
+    return;
+  }
+  const acctEl = e.target.closest('.acct');
+  if(acctEl && acctEl.getAttribute('data-closed') !== '1'){ acctEl.classList.toggle('open'); }
+});
+
+searchInput.addEventListener('input', render);
+
+// ==== 条件フィルター(2択のラジオ式) ====
+function applyRadioUI(group){
+  const wrap = document.querySelector(`.filter-radio[data-filter-group="${group}"]`);
+  wrap.querySelectorAll('.radio-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === activeFilters[group]);
+  });
+}
+
+document.querySelectorAll('.filter-radio').forEach(wrap => {
+  const group = wrap.dataset.filterGroup;
+  wrap.addEventListener('click', e => {
+    const btn = e.target.closest('.radio-btn');
+    if(!btn) return;
+    activeFilters[group] = btn.dataset.value;
+    applyRadioUI(group);
+    render();
+  });
+  applyRadioUI(group);
+});
+
+document.getElementById('filterReset').addEventListener('click', () => {
+  activeFilters.temple = '闇時2';
+  activeFilters.acct = '1垢';
+  activeFilters.number = '番号無し';
+  activeFilters.senkou = '使用しない';
+  activeFilters.onepunch = 'はい';
+  Object.keys(activeFilters).forEach(applyRadioUI);
+  render();
+});
+
+// ==== あなたの情報:ON/OFFスイッチ(OFFなら全件表示・折りたたむ) ====
+const filterMasterSwitch = document.getElementById('filterMasterSwitch');
+const filterBodyWrap = document.getElementById('filterBodyWrap');
+filterMasterSwitch.addEventListener('change', () => {
+  filterEnabled = filterMasterSwitch.checked;
+  filterBodyWrap.classList.toggle('open', filterEnabled);
+  render();
+});
+filterBodyWrap.classList.toggle('open', filterEnabled);
+
+hudCount.textContent = `${MEMBERS.length}人登録`;
+
+// ==== 更新通知バナー(今回のお知らせ文をここに書く) ====
+const updateMessage = "暖さんに新しい垢が1つ追加されました。また、ランク更新を一通り終えましたが、認識違いがあるかもしれません。おかしい箇所があれば教えてください。";
+document.getElementById('updateText').textContent = updateMessage;
+if (!updateMessage) {
+  document.getElementById('updateBanner').style.display = 'none';
+}
+
+// ==== 退会者情報 ====
+const WITHDRAWN = [
+  { lineName: "kasumiෆ.*･ﾟ", accounts: [
+    { accountName: "♡얏쿤♡", rank: "1035", gameId: "510266401239" },
+  ]},
+  { lineName: "鳥谷 育史", accounts: [
+    { accountName: "ぺろりんチーノ♡", rank: "1580", gameId: "549431907" },
+  ]},
+  { lineName: "たいち", accounts: [
+    { accountName: "た", rank: "1658", gameId: "103338919844" },
+    { accountName: "ち", rank: "632", gameId: "515283376802" },
+  ]},
+  { lineName: "こうすけ", accounts: [
+    { accountName: "まえすけ③ @星詠み☆", rank: "2000", gameId: "977778319861" },
+  ]},
+  { lineName: "ymao", accounts: [
+    { accountName: "あか", rank: "2542", gameId: "691281643194" },
+  ]},
+  { lineName: "まこと", accounts: [
+    { accountName: "特攻隊長黒", rank: "1402", gameId: "722976073114" },
+  ]},
+  { lineName: "s", accounts: [
+    { accountName: "きゃんぢょめ", rank: "2425", gameId: "562244308727" },
+    { accountName: "きゃんちょめサブ①", rank: "574", gameId: "648126303183" },
+  ]},
+  { lineName: "ばっち", accounts: [
+    { accountName: "グラ", rank: "1911", gameId: "636501537" },
+  ]},
+];
+(function renderWithdrawn(){
+  const wrap = document.getElementById('withdrawnWrap');
+  if (!wrap) return;
+  if (WITHDRAWN.length === 0) {
+    wrap.innerHTML = '<div class="withdrawn-empty">現在、退会者はいません</div>';
+    return;
+  }
+  wrap.innerHTML = WITHDRAWN.map(m => {
+    const accts = m.accounts.map(a =>
+      '<div class="withdrawn-acct">' +
+        '<span class="withdrawn-acct-name">' + escapeHtml(a.accountName) + '</span>' +
+        '<span class="withdrawn-acct-rank">Rank ' + escapeHtml(a.rank) + '</span>' +
+        '<span class="withdrawn-acct-id">ID:' + escapeHtml(a.gameId) + '</span>' +
+      '</div>'
+    ).join('');
+    return '<div class="withdrawn-item"><div class="withdrawn-name">' + escapeHtml(m.lineName) + '</div>' + accts + '</div>';
+  }).join('');
+})();
+
+render();
+</script>
+
+</body>
+</html>
